@@ -23,6 +23,8 @@ module top (
   logic [4:0] keycode;
   logic strobe;
   logic [7:0] seq;
+  logic [63:0] ss;
+  assign {ss7, ss6, ss5, ss4, ss3, ss2, ss1, ss0} = ss;
 
     // Instantiate the keysync module
     keysync ks1 (
@@ -58,27 +60,42 @@ module display (
             // what happens when state == ALARM?
         end
         LS0: begin
-            assign ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b1000_0000;
         end
         LS1 : begin
-            
-        end, 
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0100_0000;
+        end
         LS2: begin
-            // you can also combine multiple states
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0010_0000;
         end
         LS3: begin
-            // you can also combine multiple states
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0001_0000;
         end
         LS4 : begin
-            // you can also combine multiple states
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_1000;
         end
         LS5: begin
-            // you can also combine multiple states
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_0100;
         end 
         LS6: begin
-            // you can also combine multiple states
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_0010;
         end 
         LS7: begin
+            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
+            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_0001;
+        end
+        OPEN : begin
+            ss = 64'b00111111_01110011_01111001_01010100;
+        end
+        ALARM : begin
+            ss = 64'b00111001_01110111_00111000_00111000_00000000_01100111_00000110_00000110;
         end
         default: begin
             // what happens when state is none of the above?
@@ -195,6 +212,7 @@ module keysync (
         end else begin
             key_sync[0] <= keypressed;
             key_sync[1] <= key_sync[0];
+            keyout <= key_sync[1];
         end
     end
     always_comb begin
