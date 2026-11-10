@@ -54,55 +54,62 @@ module display (
     output logic [63:0] ss,
     output logic red, green, blue
     );
+    logic [2:0] lights;
+    assign {red, green, blue} = lights;
     always_comb begin
-    case(state)
-        ALARM: begin
-            // what happens when state == ALARM?
-        end
-        LS0: begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b1000_0000;
-        end
-        LS1 : begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0100_0000;
-        end
-        LS2: begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0010_0000;
-        end
-        LS3: begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0001_0000;
-        end
-        LS4 : begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_1000;
-        end
-        LS5: begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_0100;
-        end 
-        LS6: begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_0010;
-        end 
-        LS7: begin
-            ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001;
-            ss[{63, 55, 47, 39, 31, 23, 15, 7}] = 8'b0000_0001;
-        end
-        OPEN : begin
-            ss = 64'b00111111_01110011_01111001_01010100;
-        end
-        ALARM : begin
-            ss = 64'b00111001_01110111_00111000_00111000_00000000_01100111_00000110_00000110;
-        end
-        default: begin
-            // what happens when state is none of the above?
-            // best to have this to catch any errors - set all outputs to zero.
-        end
-    endcase
-end
+        case(state)
+            LS0: begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h8000_0000_0000_0000;
+                lights = 3'b001;
+            end
+            LS1 : begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0080_0000_0000_0000;
+                lights = 3'b001;
+            end
+            LS2: begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0000_8000_0000_0000;
+                lights = 3'b001;
+            end
+            LS3: begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0000_0080_0000_0000;
+                lights = 3'b001;
+            end
+            LS4 : begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0000_0000_8000_0000;
+                lights = 3'b001;
+            end
+            LS5: begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0000_0000_0080_0000;
+                lights = 3'b001;
+            end 
+            LS6: begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0000_0000_0000_8000;
+                lights = 3'b001;
+            end 
+            LS7: begin
+                ss = 64'b01101101_01111001_00111001_00111110_01010000_01111001 | 64'h0000_0000_0000_0080;
+                lights = 3'b001;
+            end
+            OPEN : begin
+                ss = 64'b00111111_01110011_01111001_01010100;
+                lights = 3'b010;
+            end
+            ALARM : begin
+                ss = 64'b00111001_01110111_00111000_00111000_00000000_01100111_00000110_00000110;
+                lights = 3'b100;
+            end
+            INIT : begin
+                ss = 64'b0;
+                lights = 3'b000;
+            end
+            default: begin
+                // what happens when state is none of the above?
+                // best to have this to catch any errors - set all outputs to zero.
+                ss = 64'b0;
+                lights = 3'b000;
+            end
+        endcase
+    end
 endmodule
 
 module fsm (
@@ -180,14 +187,14 @@ module clock_psc (
     );
     logic [7:0] counter;
     logic hzX_int;
-    assign hzX = (lim != 8'b0) ? hzX_int : 1'b0;
+    assign hzX = (lim != 8'b0) ? hzX_int : clk;
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             hzX_int <= 1'b0;
             counter <= 8'b0;
         end else if (counter < lim) begin
                 counter <= counter + 8'b1;
-        end else if (counter >= lim) begin
+        end else begin
             counter <= 8'b0;
             hzX_int <= ~hzX_int;
         end
@@ -204,18 +211,18 @@ module keysync (
     logic [1:0] key_sync;
     logic keypressed;
     assign keypressed = |keyin;
+    assign keyclk = key_sync[1];
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             key_sync <= 2'b00;
-            keyout <= 5'b0;
-            keyclk <= 1'b0;
         end else begin
             key_sync[0] <= keypressed;
             key_sync[1] <= key_sync[0];
-            keyout <= key_sync[1];
         end
     end
-    always_comb begin
-        keyclk = key_sync[0] & ~key_sync[1];
-    end
+    assign keyout[0] = keyin[1] | keyin[3] | keyin[5] | keyin[7] | keyin[9] | keyin[11] | keyin[13] | keyin[15];
+    assign keyout[1] = keyin[2] | keyin[3] | keyin[6] | keyin[7] | keyin[10] | keyin[11] | keyin[14] | keyin[15];
+    assign keyout[2] = keyin[4] | keyin[5] | keyin[6] | keyin[7] | keyin[12] | keyin[13] | keyin[14] | keyin[15];
+    assign keyout[3] = keyin[8] | keyin[9] | keyin[10] | keyin[11] | keyin[12] | keyin[13] | keyin[14] | keyin[15];
+    assign keyout[4] = keyin[16] | keyin[17] | keyin[18] | keyin[19];
 endmodule
