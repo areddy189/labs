@@ -7,26 +7,42 @@ typedef enum logic [3:0] {
 } state_t;
 
 module top (
-  // I/O ports
-  input  logic hz100, reset,
-  input  logic [20:0] pb,
-  output logic [7:0] left, right,
-         ss7, ss6, ss5, ss4, ss3, ss2, ss1, ss0,
-  output logic red, green, blue,
+    // I/O ports
+    input  logic hz100, reset,
+    input  logic [20:0] pb,
+    output logic [7:0] left, right,
+        ss7, ss6, ss5, ss4, ss3, ss2, ss1, ss0,
+    output logic red, green, blue,
 
-  // UART ports
-  output logic [7:0] txdata,
-  input  logic [7:0] rxdata,
-  output logic txclk, rxclk,
-  input  logic txready, rxready
-  );
-  logic [4:0] keycode;
-  logic strobe;
-  logic [7:0] seq;
-  logic [63:0] ss;
-  assign {ss7, ss6, ss5, ss4, ss3, ss2, ss1, ss0} = ss;
+    // UART ports
+    output logic [7:0] txdata,
+    input  logic [7:0] rxdata,
+    output logic txclk, rxclk,
+    input  logic txready, rxready
+    );
+    logic [4:0] keycode;
+    logic strobe;
+    logic hz2;
+    logic [7:0] seq;
+    logic [63:0] ss;
+    logic [3:0] state;
+    assign {ss7, ss6, ss5, ss4, ss3, ss2, ss1, ss0} = ss;
+    state = INIT;
+    clock_psc psc1 (
+        .clk(hz100),
+        .rst(reset),
+        .lim(8'd24),
+        .hzX(hz2)
+    );
 
-    // Instantiate the keysync module
+    fsm fsm1 (
+        .clk(strobe),
+        .rst(reset),
+        .keyout(keycode),
+        .seq(seq),
+        .state(state)
+    );
+
     keysync ks1 (
         .clk(hz100),
         .rst(reset),
@@ -43,9 +59,20 @@ module top (
         .seq(seq)
     );
 
+    display disp1 (
+        .hzX(hz2),
+        .state(state),
+        .ss(ss),
+        .red(red),
+        .green(green),
+        .blue(blue)
+    );
+
+    assign right = seq;
+
     // Testing assignments (to be commented out when starting the lab)
-    assign right[0] = strobe;        // only for use for testing lab assignment, comment out when starting the lab
-    assign right[5:1] = keycode;     // only for use for testing lab assignment, comment out when starting the lab
+    // assign right[0] = strobe;        // only for use for testing lab assignment, comment out when starting the lab
+    // assign right[5:1] = keycode;     // only for use for testing lab assignment, comment out when starting the lab
 endmodule
 
 module display (
@@ -96,7 +123,7 @@ module display (
             end
             ALARM : begin
                 ss = 64'b00111001_01110111_00111000_00111000_00000000_01100111_00000110_00000110;
-                lights = 3'b100;
+                lights = {hzX, 2'b00};
             end
             INIT : begin
                 ss = 64'b0;
